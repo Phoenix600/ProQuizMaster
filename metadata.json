@@ -1,0 +1,5 @@
+{
+  "name": "ProQuiz Master",
+  "description": "A professional quiz application with an admin portal, SQLite database, and animated results.",
+  "requestFramePermissions": []
+}
