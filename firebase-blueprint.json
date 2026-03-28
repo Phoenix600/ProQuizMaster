@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a user in the system.",
+      "type": "object",
+      "properties": {
+        "_id": { "type": "string", "description": "The unique identifier for the user." },
+        "name": { "type": "string", "description": "The user's full name." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "role": { "type": "string", "enum": ["admin", "student"], "description": "The user's role." }
+      },
+      "required": ["_id", "name", "email", "role"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Represents a course containing multiple chapters.",
+      "type": "object",
+      "properties": {
+        "_id": { "type": "string", "description": "The unique identifier for the course." },
+        "courseName": { "type": "string", "description": "The name of the course." },
+        "description": { "type": "string", "description": "A brief description of the course." }
+      },
+      "required": ["courseName"]
+    },
+    "Chapter": {
+      "title": "Chapter",
+      "description": "Represents a chapter within a course.",
+      "type": "object",
+      "properties": {
+        "_id": { "type": "string", "description": "The unique identifier for the chapter." },
+        "courseId": { "type": "string", "description": "The ID of the course this chapter belongs to." },
+        "chapterName": { "type": "string", "description": "The name of the chapter." },
+        "description": { "type": "string", "description": "A brief description of the chapter." }
+      },
+      "required": ["courseId", "chapterName"]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "Represents a quiz within a chapter.",
+      "type": "object",
+      "properties": {
+        "_id": { "type": "string", "description": "The unique identifier for the quiz." },
+        "chapterId": { "type": "string", "description": "The ID of the chapter this quiz belongs to." },
+        "quizTitle": { "type": "string", "description": "The title of the quiz." },
+        "description": { "type": "string", "description": "A brief description of the quiz." },
+        "passingScore": { "type": "number", "description": "The minimum percentage required to pass." },
+        "timeLimit": { "type": "number", "description": "The time limit for the quiz in minutes." },
+        "isPublished": { "type": "boolean", "description": "Whether the quiz is published and available to students." }
+      },
+      "required": ["chapterId", "quizTitle", "passingScore", "timeLimit"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "Represents a question within a quiz.",
+      "type": "object",
+      "properties": {
+        "_id": { "type": "string", "description": "The unique identifier for the question." },
+        "quizId": { "type": "string", "description": "The ID of the quiz this question belongs to." },
+        "questionText": { "type": "string", "description": "The text of the question." },
+        "codeSnippet": { "type": "string", "description": "Optional code snippet associated with the question." },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": { "type": "string" },
+              "isCorrect": { "type": "boolean" }
+            }
+          }
+        },
+        "numberOfCorrectAnswers": { "type": "number", "description": "The number of correct options." },
+        "explanation": { "type": "string", "description": "Explanation for the correct answer." },
+        "order": { "type": "number", "description": "The order of the question in the quiz." }
+      },
+      "required": ["quizId", "questionText", "options", "numberOfCorrectAnswers"]
+    },
+    "QuizResult": {
+      "title": "QuizResult",
+      "description": "Represents the result of a quiz attempt.",
+      "type": "object",
+      "properties": {
+        "_id": { "type": "string", "description": "The unique identifier for the result." },
+        "userId": { "type": "string", "description": "The ID of the user who took the quiz." },
+        "quizId": { "type": "string", "description": "The ID of the quiz taken." },
+        "score": { "type": "number", "description": "The number of correct answers." },
+        "totalQuestions": { "type": "number", "description": "The total number of questions in the quiz." },
+        "percentage": { "type": "number", "description": "The percentage score achieved." },
+        "isPassed": { "type": "boolean", "description": "Whether the user passed the quiz." },
+        "timeTaken": { "type": "number", "description": "The time taken to complete the quiz in seconds." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the quiz was submitted." }
+      },
+      "required": ["userId", "quizId", "score", "totalQuestions", "percentage", "isPassed", "timeTaken", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users": { "schema": "User", "description": "Collection of user profiles." },
+    "courses": { "schema": "Course", "description": "Collection of courses." },
+    "chapters": { "schema": "Chapter", "description": "Collection of chapters." },
+    "quizzes": { "schema": "Quiz", "description": "Collection of quizzes." },
+    "questions": { "schema": "Question", "description": "Collection of questions." },
+    "results": { "schema": "QuizResult", "description": "Collection of quiz results." }
+  }
+}

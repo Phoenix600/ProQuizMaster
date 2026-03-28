@@ -30,15 +30,67 @@ import {
   PlusCircle,
   AlertCircle
 } from 'lucide-react';
+import { auth } from './firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import * as api from './services/api';
 import { User, Course, Chapter, Quiz, Question, Option, QuizResult, LeaderboardEntry } from './types';
 
 type View = 'home' | 'selection' | 'quiz' | 'admin' | 'results' | 'login';
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#141414] flex items-center justify-center p-4">
+          <div className="bg-[#1a1a1a] border border-red-500/20 p-8 rounded-3xl max-w-md w-full text-center space-y-6">
+            <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle size={32} />
+            </div>
+            <h2 className="text-2xl font-bold text-white">Something went wrong</h2>
+            <p className="text-gray-400 text-sm">
+              {this.state.error?.message || "An unexpected error occurred. Please try refreshing the page."}
+            </p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
+  );
+}
+
+function AppContent() {
   const [view, setView] = useState<View>('home');
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -89,21 +141,41 @@ export default function App() {
   });
 
   useEffect(() => {
-    const init = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          const user = JSON.parse(storedUser);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          // In a real app, we'd fetch the user profile from Firestore
+          // For now, we'll check if it's the admin email
+          const isAdminUser = firebaseUser.email === 'pranayramteke613@gmail.com';
+          const user: User = {
+            _id: firebaseUser.uid,
+            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+            email: firebaseUser.email || '',
+            role: isAdminUser ? 'admin' : 'student'
+          };
           setCurrentUser(user);
-          setIsAdmin(user.role === 'admin');
+          setIsAdmin(isAdminUser);
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
         }
+      } else {
+        setCurrentUser(null);
+        setIsAdmin(false);
       }
-      await fetchInitialData();
-      setIsLoading(false);
-    };
-    init();
+      setIsAuthReady(true);
+    });
+
+    fetchInitialData();
+    api.testConnection();
+
+    return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (isAuthReady) {
+      setIsLoading(false);
+    }
+  }, [isAuthReady]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -375,9 +447,8 @@ export default function App() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { user, token } = await api.login(loginEmail, loginPassword);
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      setIsLoading(true);
+      const { user } = await api.login(loginEmail, loginPassword);
       setCurrentUser(user);
       setIsAdmin(user.role === 'admin');
       setView(user.role === 'admin' ? 'admin' : 'home');
@@ -385,16 +456,21 @@ export default function App() {
       setLoginEmail('');
       setLoginPassword('');
     } catch (error: any) {
-      setLoginError(error.response?.data?.message || 'Invalid credentials. Please try again.');
+      setLoginError(error.message || 'Invalid credentials. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setCurrentUser(null);
-    setIsAdmin(false);
-    setView('home');
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      setCurrentUser(null);
+      setIsAdmin(false);
+      setView('home');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const formatTime = (seconds: number) => {
