@@ -124,6 +124,16 @@ function AppContent() {
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
 
+  // New Admin Form States
+  const [showAddCourse, setShowAddCourse] = useState(false);
+  const [newCourseData, setNewCourseData] = useState({ title: '', description: '' });
+  
+  const [showAddChapter, setShowAddChapter] = useState(false);
+  const [newChapterData, setNewChapterData] = useState({ title: '', description: '' });
+  
+  const [showAddQuiz, setShowAddQuiz] = useState(false);
+  const [newQuizData, setNewQuizData] = useState({ title: '', description: '', passingScore: 70, timeLimit: 15 });
+
   // Admin form state
   const [newQuestion, setNewQuestion] = useState<Partial<Question>>({
     quizId: '',
@@ -1150,21 +1160,57 @@ function AppContent() {
                       </div>
                     ))}
                     
-                    <button
-                      onClick={async () => {
-                        const name = prompt('Enter course name:');
-                        if (name) {
-                          await api.createCourse(name, `Description for ${name}`);
-                          fetchInitialData();
-                        }
-                      }}
-                      className="bg-white/[0.02] border-2 border-dashed border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center gap-4 text-gray-500 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all min-h-[250px] group"
-                    >
-                      <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Plus size={24} />
+                    {showAddCourse ? (
+                      <div className="bg-[#1a1a1a] border border-orange-500/30 rounded-3xl p-8 space-y-4">
+                        <h4 className="text-xl font-bold text-white">Add New Course</h4>
+                        <div className="space-y-4">
+                          <input 
+                            type="text" 
+                            placeholder="Course Title"
+                            value={newCourseData.title}
+                            onChange={(e) => setNewCourseData({ ...newCourseData, title: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-orange-500 transition-colors"
+                          />
+                          <textarea 
+                            placeholder="Course Description"
+                            value={newCourseData.description}
+                            onChange={(e) => setNewCourseData({ ...newCourseData, description: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-orange-500 transition-colors h-24 resize-none"
+                          />
+                        </div>
+                        <div className="flex gap-3">
+                          <button 
+                            onClick={async () => {
+                              if (newCourseData.title) {
+                                await api.createCourse(newCourseData.title, newCourseData.description);
+                                setShowAddCourse(false);
+                                setNewCourseData({ title: '', description: '' });
+                                fetchInitialData();
+                              }
+                            }}
+                            className="flex-1 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-all"
+                          >
+                            Create Course
+                          </button>
+                          <button 
+                            onClick={() => setShowAddCourse(false)}
+                            className="px-6 py-3 bg-white/5 text-gray-400 font-bold rounded-xl hover:bg-white/10 transition-all"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
-                      <span className="font-bold">Add New Course</span>
-                    </button>
+                    ) : (
+                      <button
+                        onClick={() => setShowAddCourse(true)}
+                        className="bg-white/[0.02] border-2 border-dashed border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center gap-4 text-gray-500 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all min-h-[250px] group"
+                      >
+                        <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <Plus size={24} />
+                        </div>
+                        <span className="font-bold">Add New Course</span>
+                      </button>
+                    )}
                   </div>
 
                   {adminSelectedCourse && expandedCourses[adminSelectedCourse._id] && (
@@ -1262,19 +1308,75 @@ function AppContent() {
                                           </div>
                                         </div>
                                     ))}
-                                    <button
-                                      onClick={async () => {
-                                        const title = prompt('Enter quiz title:');
-                                        if (title) {
-                                          await api.createQuiz(chapter._id, adminSelectedCourse._id, title, `Description for ${title}`, 70, 15);
-                                          fetchQuizzesForChapter(chapter._id);
-                                        }
-                                      }}
-                                      className="w-full py-2.5 border border-dashed border-white/10 rounded-xl text-[10px] font-bold text-gray-500 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
-                                    >
-                                      <Plus size={14} />
-                                      Add New Quiz
-                                    </button>
+                                    {showAddQuiz ? (
+                                      <div className="bg-white/5 border border-orange-500/30 rounded-xl p-4 space-y-3 mt-3">
+                                        <h4 className="text-xs font-bold text-white uppercase tracking-widest">Add New Quiz</h4>
+                                        <div className="space-y-3">
+                                          <input 
+                                            type="text" 
+                                            placeholder="Quiz Title"
+                                            value={newQuizData.title}
+                                            onChange={(e) => setNewQuizData({ ...newQuizData, title: e.target.value })}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-500 transition-colors text-xs"
+                                          />
+                                          <textarea 
+                                            placeholder="Quiz Description"
+                                            value={newQuizData.description}
+                                            onChange={(e) => setNewQuizData({ ...newQuizData, description: e.target.value })}
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-500 transition-colors text-xs h-16 resize-none"
+                                          />
+                                          <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                              <label className="text-[10px] text-gray-500 uppercase">Time (mins)</label>
+                                              <input 
+                                                type="number" 
+                                                value={newQuizData.timeLimit}
+                                                onChange={(e) => setNewQuizData({ ...newQuizData, timeLimit: parseInt(e.target.value) })}
+                                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-500 transition-colors text-xs"
+                                              />
+                                            </div>
+                                            <div className="space-y-1">
+                                              <label className="text-[10px] text-gray-500 uppercase">Pass %</label>
+                                              <input 
+                                                type="number" 
+                                                value={newQuizData.passingScore}
+                                                onChange={(e) => setNewQuizData({ ...newQuizData, passingScore: parseInt(e.target.value) })}
+                                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-500 transition-colors text-xs"
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <button 
+                                            onClick={async () => {
+                                              if (newQuizData.title && adminSelectedCourse) {
+                                                await api.createQuiz(chapter._id, adminSelectedCourse._id, newQuizData.title, newQuizData.description, newQuizData.passingScore, newQuizData.timeLimit);
+                                                setShowAddQuiz(false);
+                                                setNewQuizData({ title: '', description: '', passingScore: 70, timeLimit: 15 });
+                                                fetchQuizzesForChapter(chapter._id);
+                                              }
+                                            }}
+                                            className="flex-1 py-2 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 transition-all text-[10px] uppercase tracking-wider"
+                                          >
+                                            Create
+                                          </button>
+                                          <button 
+                                            onClick={() => setShowAddQuiz(false)}
+                                            className="px-3 py-2 bg-white/5 text-gray-400 font-bold rounded-lg hover:bg-white/10 transition-all text-[10px] uppercase tracking-wider"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => setShowAddQuiz(true)}
+                                        className="w-full py-2.5 border border-dashed border-white/10 rounded-xl text-[10px] font-bold text-gray-500 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                                      >
+                                        <Plus size={14} />
+                                        Add New Quiz
+                                      </button>
+                                    )}
                                   </motion.div>
                                 )}
                               </AnimatePresence>
@@ -1282,19 +1384,55 @@ function AppContent() {
                           </div>
                         ))}
                         
-                        <button
-                          onClick={async () => {
-                            const name = prompt('Enter chapter name:');
-                            if (name) {
-                              await api.createChapter(adminSelectedCourse._id, name, `Description for ${name}`);
-                              fetchChaptersForCourse(adminSelectedCourse._id);
-                            }
-                          }}
-                          className="bg-white/[0.02] border-2 border-dashed border-white/5 rounded-2xl p-6 flex items-center justify-center gap-3 text-gray-500 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all min-h-[100px] group"
-                        >
-                          <Plus size={20} />
-                          <span className="font-bold">Add New Chapter</span>
-                        </button>
+                        {showAddChapter ? (
+                          <div className="bg-[#1a1a1a] border border-blue-500/30 rounded-2xl p-6 space-y-4">
+                            <h4 className="text-lg font-bold text-white">Add New Chapter</h4>
+                            <div className="space-y-4">
+                              <input 
+                                type="text" 
+                                placeholder="Chapter Title"
+                                value={newChapterData.title}
+                                onChange={(e) => setNewChapterData({ ...newChapterData, title: e.target.value })}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                              />
+                              <textarea 
+                                placeholder="Chapter Description"
+                                value={newChapterData.description}
+                                onChange={(e) => setNewChapterData({ ...newChapterData, description: e.target.value })}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition-colors h-20 resize-none text-sm"
+                              />
+                            </div>
+                            <div className="flex gap-3">
+                              <button 
+                                onClick={async () => {
+                                  if (newChapterData.title && adminSelectedCourse) {
+                                    await api.createChapter(adminSelectedCourse._id, newChapterData.title, newChapterData.description);
+                                    setShowAddChapter(false);
+                                    setNewChapterData({ title: '', description: '' });
+                                    fetchChaptersForCourse(adminSelectedCourse._id);
+                                  }
+                                }}
+                                className="flex-1 py-2.5 bg-blue-500 text-white font-bold rounded-xl hover:bg-blue-600 transition-all text-sm"
+                              >
+                                Create Chapter
+                              </button>
+                              <button 
+                                onClick={() => setShowAddChapter(false)}
+                                className="px-4 py-2.5 bg-white/5 text-gray-400 font-bold rounded-xl hover:bg-white/10 transition-all text-sm"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setShowAddChapter(true)}
+                            className="bg-white/[0.02] border-2 border-dashed border-white/5 rounded-2xl p-6 flex items-center justify-center gap-3 text-gray-500 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all min-h-[100px] group"
+                          >
+                            <Plus size={20} />
+                            <span className="font-bold">Add New Chapter</span>
+                          </button>
+                        )}
                       </div>
                     </motion.div>
                   )}
