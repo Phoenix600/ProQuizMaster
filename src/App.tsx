@@ -28,10 +28,9 @@ import {
   Filter,
   MoreVertical,
   PlusCircle,
-  AlertCircle
+  AlertCircle,
+  UserPlus
 } from 'lucide-react';
-import { auth } from './firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 import * as api from './services/api';
 import { User, Course, Chapter, Quiz, Question, Option, QuizResult, LeaderboardEntry } from './types';
 
@@ -93,6 +92,8 @@ function AppContent() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [registerName, setRegisterName] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
   const [loginError, setLoginError] = useState('');
   
   // Hierarchy state
@@ -141,34 +142,14 @@ function AppContent() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          // In a real app, we'd fetch the user profile from Firestore
-          // For now, we'll check if it's the admin email
-          const isAdminUser = firebaseUser.email === 'pranayramteke613@gmail.com';
-          const user: User = {
-            _id: firebaseUser.uid,
-            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-            email: firebaseUser.email || '',
-            role: isAdminUser ? 'admin' : 'student'
-          };
-          setCurrentUser(user);
-          setIsAdmin(isAdminUser);
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-        }
-      } else {
-        setCurrentUser(null);
-        setIsAdmin(false);
-      }
-      setIsAuthReady(true);
-    });
-
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+      setCurrentUser(user);
+      setIsAdmin(user.role === 'admin');
+    }
+    setIsAuthReady(true);
     fetchInitialData();
-    api.testConnection();
-
-    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -448,29 +429,38 @@ function AppContent() {
     e.preventDefault();
     try {
       setIsLoading(true);
-      const { user } = await api.login(loginEmail, loginPassword);
+      setLoginError('');
+      
+      let data;
+      if (isRegistering) {
+        data = await api.register(registerName, loginEmail, loginPassword);
+      } else {
+        data = await api.login(loginEmail, loginPassword);
+      }
+      
+      const { user, token } = data;
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('token', token);
+      
       setCurrentUser(user);
       setIsAdmin(user.role === 'admin');
       setView(user.role === 'admin' ? 'admin' : 'home');
-      setLoginError('');
       setLoginEmail('');
       setLoginPassword('');
+      setRegisterName('');
     } catch (error: any) {
-      setLoginError(error.message || 'Invalid credentials. Please try again.');
+      setLoginError(error.response?.data?.message || error.message || 'Authentication failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await auth.signOut();
-      setCurrentUser(null);
-      setIsAdmin(false);
-      setView('home');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    setCurrentUser(null);
+    setIsAdmin(false);
+    setView('home');
   };
 
   const formatTime = (seconds: number) => {
@@ -562,8 +552,8 @@ function AppContent() {
                 onClick={() => setView('login')}
                 className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${view === 'login' ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-gray-400'}`}
               >
-                <Settings size={18} />
-                <span className="hidden sm:inline">Admin Login</span>
+                <UserIcon size={18} />
+                <span className="hidden sm:inline">Login</span>
               </button>
             )}
             {view !== 'home' && (
@@ -1030,10 +1020,10 @@ function AppContent() {
               <div className="bg-[#1a1a1a] border border-white/5 p-10 rounded-3xl w-full max-w-md shadow-2xl">
                 <div className="text-center space-y-4 mb-10">
                   <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center mx-auto">
-                    <Settings className="text-orange-500" size={32} />
+                    {isRegistering ? <UserPlus className="text-orange-500" size={32} /> : <UserIcon className="text-orange-500" size={32} />}
                   </div>
-                  <h2 className="text-3xl font-bold text-white">Admin Login</h2>
-                  <p className="text-gray-400">Enter your credentials to access the dashboard.</p>
+                  <h2 className="text-3xl font-bold text-white">{isRegistering ? 'Create Account' : 'Login'}</h2>
+                  <p className="text-gray-400">{isRegistering ? 'Join our community of learners today.' : 'Enter your credentials to access your account.'}</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
@@ -1043,6 +1033,21 @@ function AppContent() {
                       {loginError}
                     </div>
                   )}
+                  
+                  {isRegistering && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={registerName}
+                        onChange={(e) => setRegisterName(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-orange-500 transition-all"
+                        placeholder="John Doe"
+                      />
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Email Address</label>
                     <input
@@ -1051,7 +1056,7 @@ function AppContent() {
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-orange-500 transition-all"
-                      placeholder="admin@gmail.com"
+                      placeholder="you@example.com"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1067,10 +1072,25 @@ function AppContent() {
                   </div>
                   <button
                     type="submit"
-                    className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-500/20 transition-all"
+                    disabled={isLoading}
+                    className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-500/20 transition-all disabled:opacity-50"
                   >
-                    Login to Dashboard
+                    {isLoading ? 'Processing...' : (isRegistering ? 'Create Account' : 'Login')}
                   </button>
+                  
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRegistering(!isRegistering);
+                        setLoginError('');
+                      }}
+                      className="text-sm text-orange-500 hover:text-orange-400 font-medium transition-colors"
+                    >
+                      {isRegistering ? 'Already have an account? Login' : "Don't have an account? Create one"}
+                    </button>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => setView('home')}
