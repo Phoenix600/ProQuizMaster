@@ -476,12 +476,17 @@ function AppContent() {
     }));
   };
 
-  const getLanguage = (subject: string | null) => {
+  const getLanguage = (subject: string | null, questionLanguage?: string) => {
+    if (questionLanguage) return questionLanguage.toLowerCase();
     if (!subject) return 'javascript';
     const s = subject.toLowerCase();
     if (s.includes('java') && !s.includes('script')) return 'java';
     if (s.includes('js') || s.includes('react')) return 'javascript';
     if (s.includes('sql')) return 'sql';
+    if (s.includes('python')) return 'python';
+    if (s.includes('cpp') || s.includes('c++')) return 'cpp';
+    if (s.includes('html')) return 'html';
+    if (s.includes('css')) return 'css';
     return 'javascript';
   };
 
@@ -834,9 +839,20 @@ function AppContent() {
                       </div>
                       <div className="p-2">
                         <SyntaxHighlighter 
-                          language={getLanguage(selectedCourse?.title || null)} 
+                          language={getLanguage(selectedCourse?.title || null, questions[currentQuestionIndex].programmingLanguage)} 
                           style={atomDark}
-                          customStyle={{ background: 'transparent', padding: '1rem', margin: 0, fontSize: '0.875rem' }}
+                          customStyle={{ 
+                            background: 'transparent', 
+                            padding: '1.5rem', 
+                            margin: 0, 
+                            fontSize: '0.9rem',
+                            lineHeight: '1.6'
+                          }}
+                          codeTagProps={{
+                            style: {
+                              fontFamily: '"JetBrains Mono", ui-monospace, SFMono-Regular, monospace',
+                            }
+                          }}
                         >
                           {questions[currentQuestionIndex].codeSnippet}
                         </SyntaxHighlighter>
@@ -862,7 +878,7 @@ function AppContent() {
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
                               isSelected ? 'bg-orange-500 text-white' : 'bg-white/10 text-gray-400 group-hover:bg-white/20'
                             }`}>
-                              {String.fromCharCode(64 + idx)}
+                              {String.fromCharCode(65 + idx)}
                             </div>
                             <span className="text-lg">{option.text}</span>
                           </div>

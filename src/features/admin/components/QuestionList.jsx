@@ -63,7 +63,18 @@ const QuestionList = ({ questions, onEdit, onDelete }) => {
                   <SyntaxHighlighter
                     language={q.programmingLanguage}
                     style={atomDark}
-                    customStyle={{ background: 'transparent', padding: 0, margin: 0, fontSize: '12px' }}
+                    customStyle={{ 
+                      background: 'transparent', 
+                      padding: 0, 
+                      margin: 0, 
+                      fontSize: '12px',
+                      lineHeight: '1.5'
+                    }}
+                    codeTagProps={{
+                      style: {
+                        fontFamily: '"JetBrains Mono", ui-monospace, SFMono-Regular, monospace',
+                      }
+                    }}
                   >
                     {q.codeSnippet}
                   </SyntaxHighlighter>
