@@ -75,12 +75,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <div className="space-y-2">
             <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Email Address</label>
             <input
-              type="email"
+              type="text"
               required
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-orange-500 transition-all"
-              placeholder="you@example.com"
+              placeholder="your@email.com"
             />
           </div>
           <div className="space-y-2">

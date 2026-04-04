@@ -9,6 +9,7 @@ interface HomeViewProps {
   courseChapters: Record<string, Chapter[]>;
   chapterQuizzes: Record<string, Quiz[]>;
   questions: Question[];
+  summaryStats: { courses: number; chapters: number; quizzes: number; questions: number };
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({ 
@@ -16,7 +17,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   courses, 
   courseChapters, 
   chapterQuizzes, 
-  questions 
+  questions,
+  summaryStats
 }) => {
   return (
     <motion.div
@@ -55,10 +57,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pt-12">
         {[
-          { label: 'Courses', value: courses.length },
-          { label: 'Chapters', value: Object.values(courseChapters).reduce((acc, c) => acc + c.length, 0) },
-          { label: 'Quizzes', value: Object.values(chapterQuizzes).reduce((acc, q) => acc + q.length, 0) },
-          { label: 'Questions', value: questions.length }
+          { label: 'Courses', value: summaryStats.courses },
+          { label: 'Chapters', value: summaryStats.chapters },
+          { label: 'Quizzes', value: summaryStats.quizzes },
+          { label: 'Questions', value: summaryStats.questions }
         ].map((stat, i) => (
           <div key={i} className="space-y-1">
             <p className="text-3xl font-bold text-white">{stat.value}</p>

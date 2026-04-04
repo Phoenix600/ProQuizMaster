@@ -11,10 +11,17 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+    const token = localStorage.getItem('token');
+    
+    // Only restore user if BOTH user AND token exist
+    if (savedUser && token) {
       const user = JSON.parse(savedUser);
       setCurrentUser(user);
       setIsAdmin(user.role === 'admin');
+    } else {
+      // If either is missing, clear both to ensure clean state
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
     }
     setIsLoading(false);
   }, []);

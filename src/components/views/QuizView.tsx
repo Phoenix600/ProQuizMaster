@@ -21,6 +21,7 @@ interface QuizViewProps {
   selectedQuiz: Quiz | null;
   formatTime: (seconds: number) => string;
   getLanguage: (subject: string | null, questionLanguage?: string) => string;
+  submitQuiz: () => void;
 }
 
 export const QuizView: React.FC<QuizViewProps> = ({
@@ -38,7 +39,8 @@ export const QuizView: React.FC<QuizViewProps> = ({
   selectedChapter,
   selectedQuiz,
   formatTime,
-  getLanguage
+  getLanguage,
+  submitQuiz
 }) => {
   return (
     <motion.div 
@@ -188,10 +190,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
             {currentQuestionIndex === questions.length - 1 ? (
               <button
-                onClick={() => {
-                  setIsSubmitted(true);
-                  setView('results');
-                }}
+                onClick={submitQuiz}
                 className="flex items-center gap-2 px-8 py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg shadow-orange-500/20 transition-all"
               >
                 Submit Quiz

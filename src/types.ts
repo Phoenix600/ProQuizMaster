@@ -9,6 +9,7 @@ export interface Course {
   _id: string;
   title: string;
   description: string;
+  isPublished: boolean;
 }
 
 export interface Chapter {
@@ -25,6 +26,7 @@ export interface Quiz {
   courseId: string;
   title: string;
   description: string;
+  questionCount: number;
   passingScore: number;
   timeLimit: number; // in minutes
   isPublished: boolean;
@@ -64,5 +66,18 @@ export interface LeaderboardEntry {
   score: number;
   timeTaken: number;
   percentage: number;
+  createdAt: string;
+}
+
+export interface GlobalLeaderboardEntry {
+  userName: string;
+  userEmail: string;
+  quizTitle: string;
+  quizId: string | null;
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  isPassed: boolean;
+  timeTaken: number;
   createdAt: string;
 }

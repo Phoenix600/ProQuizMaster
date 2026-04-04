@@ -11,6 +11,11 @@ export const createCourse = async (title, description) => {
   return response.data;
 };
 
+export const updateCourse = async (courseId, data) => {
+  const response = await apiClient.patch(ENDPOINTS.ADMIN.COURSE_BY_ID(courseId), data);
+  return response.data;
+};
+
 export const deleteCourse = async (courseId) => {
   await apiClient.delete(`${ENDPOINTS.ADMIN.COURSES}/${courseId}`);
 };
@@ -34,8 +39,13 @@ export const getQuizzes = async (chapterId) => {
   return response.data;
 };
 
-export const createQuiz = async (chapterId, courseId, title, description, passingScore, timeLimit) => {
-  const response = await apiClient.post(ENDPOINTS.ADMIN.QUIZZES_BASE, { chapterId, courseId, title, description, passingScore, timeLimit });
+export const createQuiz = async (chapterId, courseId, title, description, questionCount, passingScore, timeLimit) => {
+  const response = await apiClient.post(ENDPOINTS.ADMIN.QUIZZES_BASE, { chapterId, courseId, title, description, questionCount, passingScore, timeLimit });
+  return response.data;
+};
+
+export const updateQuiz = async (quizId, quizData) => {
+  const response = await apiClient.patch(`${ENDPOINTS.ADMIN.QUIZZES_BASE}/${quizId}`, quizData);
   return response.data;
 };
 
@@ -67,5 +77,10 @@ export const deleteQuestion = async (questionId) => {
 
 export const getLeaderboard = async (quizId) => {
   const response = await apiClient.get(ENDPOINTS.ADMIN.LEADERBOARD(quizId));
+  return response.data;
+};
+
+export const getAllLeaderboard = async () => {
+  const response = await apiClient.get(ENDPOINTS.ADMIN.LEADERBOARD_ALL);
   return response.data;
 };

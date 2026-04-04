@@ -41,6 +41,13 @@ import { AdminView } from './components/views/AdminView';
 import { User, Course, Chapter, Quiz, Question, Option, QuizResult, LeaderboardEntry } from './types';
 
 type View = 'home' | 'selection' | 'quiz' | 'admin' | 'results' | 'login';
+type ToastType = 'success' | 'error' | 'loading';
+
+interface ToastMessage {
+  id: number;
+  type: ToastType;
+  text: string;
+}
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
   constructor(props: any) {
@@ -92,7 +99,10 @@ export default function App() {
 }
 
 function AppContent() {
-  const [view, setView] = useState<View>('home');
+  const [view, setView] = useState<View>(() => {
+    const savedView = localStorage.getItem('view');
+    return (savedView as View) || 'home';
+  });
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -107,6 +117,8 @@ function AppContent() {
   const [courseChapters, setCourseChapters] = useState<Record<string, Chapter[]>>({});
   const [chapterQuizzes, setChapterQuizzes] = useState<Record<string, Quiz[]>>({});
   
+  const [summaryStats, setSummaryStats] = useState({ courses: 0, chapters: 0, quizzes: 0, questions: 0 });
+  
   // Selection state
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
@@ -116,7 +128,7 @@ function AppContent() {
   const [adminSelectedCourse, setAdminSelectedCourse] = useState<Course | null>(null);
   const [adminSelectedChapter, setAdminSelectedChapter] = useState<Chapter | null>(null);
   const [adminSelectedQuiz, setAdminSelectedQuiz] = useState<Quiz | null>(null);
-  const [adminView, setAdminView] = useState<'hierarchy' | 'questions'>('hierarchy');
+  const [adminView, setAdminView] = useState<'hierarchy' | 'questions' | 'leaderboard'>('hierarchy');
   
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -130,6 +142,7 @@ function AppContent() {
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [quizQuestionCounts, setQuizQuestionCounts] = useState<Record<string, number>>({});
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // New Admin Form States
   const [showAddCourse, setShowAddCourse] = useState(false);
@@ -139,8 +152,45 @@ function AppContent() {
   const [newChapterData, setNewChapterData] = useState({ title: '', description: '' });
   
   const [showAddQuiz, setShowAddQuiz] = useState(false);
-  const [newQuizData, setNewQuizData] = useState({ title: '', description: '', passingScore: 70, timeLimit: 15 });
+  const [newQuizData, setNewQuizData] = useState({
+    title: '',
+    description: '',
+    questionCount: 1,
+    passingScore: 70,
+    timeLimit: 15,
+  });
   const [courseSearch, setCourseSearch] = useState('');
+
+  const dismissToast = (id: number) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
+
+  const pushToast = (
+    text: string,
+    type: ToastType = 'success',
+    durationMs: number = 2600
+  ) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    setToasts((prev) => [...prev, { id, type, text }]);
+    if (durationMs > 0) {
+      window.setTimeout(() => dismissToast(id), durationMs);
+    }
+    return id;
+  };
+
+  const updateToast = (
+    id: number,
+    text: string,
+    type: ToastType = 'success',
+    durationMs: number = 2600
+  ) => {
+    setToasts((prev) =>
+      prev.map((toast) => (toast.id === id ? { ...toast, text, type } : toast))
+    );
+    if (durationMs > 0) {
+      window.setTimeout(() => dismissToast(id), durationMs);
+    }
+  };
 
   // Admin form state
   const [newQuestion, setNewQuestion] = useState<Partial<Question>>({
@@ -161,11 +211,19 @@ function AppContent() {
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+    const token = localStorage.getItem('token');
+    
+    // Only restore user if both user AND token exist (both are required for auth)
+    if (savedUser && token) {
       const user = JSON.parse(savedUser);
       setCurrentUser(user);
       setIsAdmin(user.role === 'admin');
+    } else {
+      // If either is missing, clear both to ensure clean state
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
     }
+    
     setIsAuthReady(true);
     fetchInitialData();
   }, []);
@@ -175,6 +233,10 @@ function AppContent() {
       setIsLoading(false);
     }
   }, [isAuthReady]);
+
+  useEffect(() => {
+    localStorage.setItem('view', view);
+  }, [view]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -190,10 +252,19 @@ function AppContent() {
 
   const fetchInitialData = async () => {
     try {
+      // Fetch stats summary (public-ish)
+      api.getStatsSummary().then(setSummaryStats).catch(console.error);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setCourses([]);
+        return;
+      }
       const coursesData = await api.getCourses();
       setCourses(coursesData);
     } catch (error) {
       console.error('Failed to fetch initial data:', error);
+      setCourses([]);
     }
   };
 
@@ -253,13 +324,20 @@ function AppContent() {
   };
 
   const startQuiz = async (quizId: string) => {
+    // Check if user is authenticated before attempting to load
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setView('login');
+      return;
+    }
+    
     try {
       setIsLoading(true);
       const { quiz, questions: quizQuestions } = await api.getQuizWithQuestions(quizId);
       setQuestions(quizQuestions);
       setSelectedQuiz(quiz);
       
-      const duration = quiz.timeLimit * 60;
+      const duration = (quiz.timeLimit || 10) * 60;
       setTimeLeft(duration);
       setQuizDuration(duration);
       
@@ -267,15 +345,32 @@ function AppContent() {
       setAnswers({});
       setIsSubmitted(false);
       setView('quiz');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start quiz:', error);
+      // Show error only for non-auth errors since auth is already checked above
+      const msg = error.response?.data?.message || error.message || 'Failed to load quiz';
+      pushToast(msg === 'Quiz not found' ? 'This quiz is not published yet.' : msg, 'error', 3200);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handlePublishQuiz = async (quizId: string, chapterId: string) => {
+    const toastId = pushToast('Publishing quiz...', 'loading', 0);
+    try {
+      await api.publishQuiz(quizId);
+      await fetchQuizzesForChapter(chapterId);
+      updateToast(toastId, 'Quiz is now live', 'success', 2500);
+    } catch (error: any) {
+      console.error('Failed to publish quiz:', error);
+      const msg = error.response?.data?.message || error.message || 'Failed to publish quiz';
+      updateToast(toastId, msg, 'error', 3600);
+    }
+  };
+
   const submitQuiz = async () => {
     if (!selectedQuiz) return;
+    const toastId = pushToast('Submitting quiz...', 'loading', 0);
     try {
       setIsLoading(true);
       const formattedAnswers = Object.entries(answers).map(([questionId, selectedOptions]) => ({
@@ -286,9 +381,12 @@ function AppContent() {
       const result = await api.submitQuiz(selectedQuiz._id, formattedAnswers, quizDuration - timeLeft);
       setQuizResult(result);
       setIsSubmitted(true);
+      updateToast(toastId, 'Quiz submitted successfully', 'success', 2300);
       setView('results');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to submit quiz:', error);
+      const msg = error.response?.data?.message || error.message || 'Failed to submit quiz';
+      updateToast(toastId, msg, 'error', 3800);
     } finally {
       setIsLoading(false);
     }
@@ -449,6 +547,7 @@ function AppContent() {
       
       setCurrentUser(user);
       setIsAdmin(user.role === 'admin');
+      await fetchInitialData();
       setView(user.role === 'admin' ? 'admin' : 'home');
       setLoginEmail('');
       setLoginPassword('');
@@ -588,6 +687,7 @@ function AppContent() {
               courseChapters={courseChapters}
               chapterQuizzes={chapterQuizzes}
               questions={questions}
+              summaryStats={summaryStats}
             />
           )}
 
@@ -626,6 +726,7 @@ function AppContent() {
               selectedQuiz={selectedQuiz}
               formatTime={formatTime}
               getLanguage={getLanguage}
+              submitQuiz={submitQuiz}
             />
           )}
 
@@ -705,10 +806,42 @@ function AppContent() {
               handleAddQuestion={handleAddQuestion}
               handleEditClick={handleEditClick}
               handleDeleteQuestion={handleDeleteQuestion}
+              publishQuiz={handlePublishQuiz}
+              pushToast={pushToast}
+              updateToast={updateToast}
             />
           )}
         </AnimatePresence>
       </main>
+
+      <div className="fixed top-6 right-6 z-[70] space-y-3 pointer-events-none">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, x: 24, y: -8 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              exit={{ opacity: 0, x: 24, y: -8 }}
+              className={`min-w-[260px] max-w-[340px] px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-xl pointer-events-auto ${
+                toast.type === 'success'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
+                  : toast.type === 'error'
+                    ? 'bg-red-500/10 border-red-500/30 text-red-200'
+                    : 'bg-orange-500/10 border-orange-500/30 text-orange-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="mt-0.5">
+                  {toast.type === 'success' && <CheckCircle2 size={18} />}
+                  {toast.type === 'error' && <XCircle size={18} />}
+                  {toast.type === 'loading' && <RotateCcw size={18} className="animate-spin" />}
+                </div>
+                <p className="text-sm font-medium leading-5">{toast.text}</p>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
       {/* Footer */}
       <footer className="mt-20 border-t border-white/5 py-12">
